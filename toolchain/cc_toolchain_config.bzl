@@ -29,7 +29,6 @@ load(
     "tool_path",
     "with_feature_set",
 )
-load("//toolchain/fortran:action_names.bzl", FORTRAN_ACTION_NAMES = "ACTION_NAMES")
 
 all_compile_actions = [
     ACTION_NAMES.c_compile,
@@ -77,7 +76,6 @@ all_link_actions = [
     ACTION_NAMES.cpp_link_executable,
     ACTION_NAMES.cpp_link_dynamic_library,
     ACTION_NAMES.cpp_link_nodeps_dynamic_library,
-    FORTRAN_ACTION_NAMES.fortran_link_executable,
 ]
 
 lto_index_actions = [
@@ -91,7 +89,6 @@ def _impl(ctx):
     tool_paths = ctx.attr.tool_paths
     extra_cflags = ctx.attr.extra_cflags
     extra_cxxflags = ctx.attr.extra_cxxflags
-    extra_fflags = ctx.attr.extra_fflags
     extra_ldflags = ctx.attr.extra_ldflags
     extra_asmflags = ctx.attr.extra_asmflags
 
@@ -154,7 +151,7 @@ def _impl(ctx):
         enabled = True,
         flag_sets = [
             flag_set(
-                actions = all_compile_actions + [FORTRAN_ACTION_NAMES.fortran_compile],
+                actions = all_compile_actions,
                 flag_groups = [
                     flag_group(
                         flags = [
@@ -173,57 +170,12 @@ def _impl(ctx):
         enabled = True,
     )
 
-    fortran_compile_flags_feature = feature(
-        name = "fortran_compile_flags",
-        enabled = True,
-    )
-
-    static_libgfortran_feature = feature(name = "static_libgfortran")
-
-    fortran_link_flags_feature = feature(
-        name = "fortran_link_flags",
-        enabled = True,
-        flag_sets = [
-            flag_set(
-                actions = [FORTRAN_ACTION_NAMES.fortran_link_executable],
-                flag_groups = [
-                    flag_group(
-                        flags = ["-static-libgfortran"],
-                    ),
-                ],
-                with_features = [
-                    with_feature_set(
-                        features = ["static_libgfortran"],
-                    ),
-                ],
-            ),
-        ],
-    )
-
-    action_configs.append(action_config(
-        action_name = FORTRAN_ACTION_NAMES.fortran_compile,
-        enabled = True,
-        tools = [tool(path = tool_paths.get("gfortran"))],
-    ))
-
-    action_configs.append(action_config(
-        action_name = FORTRAN_ACTION_NAMES.fortran_link_executable,
-        enabled = True,
-        tools = [tool(path = tool_paths.get("gfortran"))],
-    ))
-
-    action_configs.append(action_config(
-        action_name = FORTRAN_ACTION_NAMES.fortran_archive,
-        enabled = True,
-        tools = [tool(path = tool_paths.get("ar"))],
-    ))
-
     default_compile_flags_feature = feature(
         name = "default_compile_flags",
         enabled = True,
         flag_sets = [
             flag_set(
-                actions = all_cpp_compile_actions + [FORTRAN_ACTION_NAMES.fortran_compile],
+                actions = all_cpp_compile_actions,
                 flag_groups = [
                     flag_group(
                         flags = [
@@ -237,7 +189,7 @@ def _impl(ctx):
                 ],
             ),
             flag_set(
-                actions = all_cpp_compile_actions + [FORTRAN_ACTION_NAMES.fortran_compile],
+                actions = all_cpp_compile_actions,
                 flag_groups = [
                     flag_group(
                         flags = [
@@ -249,12 +201,12 @@ def _impl(ctx):
                 with_features = [with_feature_set(features = ["opt"])],
             ),
             flag_set(
-                actions = all_cpp_compile_actions + [FORTRAN_ACTION_NAMES.fortran_compile],
+                actions = all_cpp_compile_actions,
                 flag_groups = [flag_group(flags = ["-g"])],
                 with_features = [with_feature_set(features = ["dbg"])],
             ),
             flag_set(
-                actions = all_cpp_compile_actions + [FORTRAN_ACTION_NAMES.fortran_compile],
+                actions = all_cpp_compile_actions,
                 flag_groups = [
                     flag_group(
                         flags = [
@@ -406,7 +358,7 @@ def _impl(ctx):
         enabled = True,
         flag_sets = [
             flag_set(
-                actions = all_compile_actions + [FORTRAN_ACTION_NAMES.fortran_compile],
+                actions = all_compile_actions,
                 flag_groups = [
                     flag_group(
                         flags = ["%{user_compile_flags}"],
@@ -438,17 +390,6 @@ def _impl(ctx):
                 flag_groups = [flag_group(flags = extra_cxxflags)],
             ),
         ] if len(extra_cxxflags) > 0 else [],
-    )
-
-    extra_fflags_feature = feature(
-        name = "extra_fflags",
-        enabled = True,
-        flag_sets = [
-            flag_set(
-                actions = [FORTRAN_ACTION_NAMES.fortran_compile],
-                flag_groups = [flag_group(flags = extra_fflags)],
-            ),
-        ] if len(extra_fflags) > 0 else [],
     )
 
     extra_ldflags_feature = feature(
@@ -488,7 +429,6 @@ def _impl(ctx):
                     ACTION_NAMES.cpp_module_codegen,
                     ACTION_NAMES.lto_backend,
                     ACTION_NAMES.clif_match,
-                    FORTRAN_ACTION_NAMES.fortran_compile,
                 ] + all_link_actions + lto_index_actions,
                 flag_groups = [
                     flag_group(
@@ -501,9 +441,6 @@ def _impl(ctx):
     )
 
     features = sanitizers_features + [
-        fortran_compile_flags_feature,
-        static_libgfortran_feature,
-        fortran_link_flags_feature,
         default_compile_flags_feature,
         include_paths_feature,
         library_search_directories_feature,
@@ -519,7 +456,6 @@ def _impl(ctx):
         redacted_dates_feature,
         extra_cflags_feature,
         extra_cxxflags_feature,
-        extra_fflags_feature,
         extra_ldflags_feature,
         extra_asmflags_feature,
     ]
@@ -554,7 +490,6 @@ cc_toolchain_config = rule(
         "cxx_builtin_include_directories": attr.string_list(mandatory = True),
         "extra_cflags": attr.string_list(mandatory = True),
         "extra_cxxflags": attr.string_list(mandatory = True),
-        "extra_fflags": attr.string_list(mandatory = True),
         "extra_ldflags": attr.string_list(mandatory = True),
         "extra_asmflags": attr.string_list(mandatory = True),
         "tool_paths": attr.string_dict(mandatory = True),
@@ -571,7 +506,7 @@ def _sanitizer_feature(sanitizer):
         name = sanitizer.name,
         flag_sets = [
             flag_set(
-                actions = all_compile_actions + [FORTRAN_ACTION_NAMES.fortran_compile],
+                actions = all_compile_actions,
                 flag_groups = [
                     flag_group(
                         flags = sanitizer.cflags,

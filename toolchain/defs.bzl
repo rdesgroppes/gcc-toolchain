@@ -54,11 +54,11 @@ def _gcc_toolchain_impl(rctx):
 
     include_prefix = None
     if target_arch == ARCHS.aarch64:
-        include_prefix = "aarch64-linux/"
+        include_prefix = "aarch64-unknown-linux-gnu/"
     elif target_arch == ARCHS.armv7:
         include_prefix = "arm-linux-gnueabihf/"
     elif target_arch == ARCHS.x86_64:
-        include_prefix = "x86_64-linux/"
+        include_prefix = "x86_64-unknown-linux-gnu/"
 
     c_builtin_includes = [
         include.format(
@@ -71,7 +71,7 @@ def _gcc_toolchain_impl(rctx):
         ] + ([
             "%workspace%/{include_prefix}include",
         ] if target_arch != ARCHS.x86_64 else []) + [
-            "%workspace%/sysroot/usr/include",
+            "%workspace%/{include_prefix}sysroot/usr/include",
         ]
     ]
 
@@ -101,16 +101,6 @@ def _gcc_toolchain_impl(rctx):
             ]
         ])
 
-    f_builtin_includes = [
-        include.format(
-            gcc_version = rctx.attr.gcc_version,
-            include_prefix = include_prefix,
-        )
-        for include in [
-            "%workspace%/lib/gcc/{include_prefix}{gcc_version}/finclude",
-        ]
-    ]
-
     target_compatible_with = [
         v.format(target_arch = target_arch)
         for v in rctx.attr.target_compatible_with
@@ -124,7 +114,6 @@ def _gcc_toolchain_impl(rctx):
     builtin_include_directories = []
     builtin_include_directories.extend(c_builtin_includes)
     builtin_include_directories.extend(cxx_builtin_includes)
-    builtin_include_directories.extend(f_builtin_includes)
     builtin_include_directories.extend(rctx.attr.includes)
     builtin_include_directories.extend(rctx.attr.fincludes)
 
@@ -163,25 +152,6 @@ def _gcc_toolchain_impl(rctx):
     ])
     extra_cxxflags.extend(rctx.attr.extra_cxxflags)
 
-    extra_fflags = [
-        "-nostdinc",
-        "-B%workspace%/bin",
-        "-B%workspace%/xbin",
-    ]
-    extra_fflags.extend([
-        "-I{}".format(include)
-        for include in f_builtin_includes
-    ])
-    extra_fflags.extend([
-        "-I{}".format(include)
-        for include in c_builtin_includes
-    ])
-    extra_fflags.extend([
-        "-I{}".format(finclude)
-        for finclude in rctx.attr.fincludes
-    ])
-    extra_fflags.extend(rctx.attr.extra_fflags)
-
     extra_ldflags = [
         lib.format(
             include_prefix = include_prefix,
@@ -193,14 +163,14 @@ def _gcc_toolchain_impl(rctx):
             "-B%workspace%/{include_prefix}lib",
             "-B%workspace%/lib64",
             "-B%workspace%/{include_prefix}lib64",
-            "-B%workspace%/sysroot/lib",
-            "-B%workspace%/sysroot/usr/lib",
+            "-B%workspace%/{include_prefix}sysroot/lib",
+            "-B%workspace%/{include_prefix}sysroot/usr/lib",
             "-L%workspace%/lib",
             "-L%workspace%/{include_prefix}lib",
             "-L%workspace%/lib64",
             "-L%workspace%/{include_prefix}lib64",
-            "-L%workspace%/sysroot/lib",
-            "-L%workspace%/sysroot/usr/lib",
+            "-L%workspace%/{include_prefix}sysroot/lib",
+            "-L%workspace%/{include_prefix}sysroot/usr/lib",
         ]
     ]
     extra_ldflags.extend(rctx.attr.extra_ldflags)
@@ -217,6 +187,7 @@ def _gcc_toolchain_impl(rctx):
     extra_asmflags.extend(rctx.attr.extra_asmflags)
 
     rctx.file("BUILD.bazel", _TOOLCHAIN_BUILD_FILE_CONTENT.format(
+        target_arch = rctx.attr.target_arch,
         gcc_toolchain_workspace_name = rctx.attr.gcc_toolchain_workspace_name,
         target_compatible_with = target_compatible_with,
         target_settings = target_settings,
@@ -229,66 +200,21 @@ def _gcc_toolchain_impl(rctx):
         # Flags
         extra_cflags = _format_flags(extra_cflags),
         extra_cxxflags = _format_flags(extra_cxxflags),
-        extra_fflags = _format_flags(extra_fflags),
         extra_ldflags = _format_flags(extra_ldflags),
         extra_asmflags = _format_flags(extra_asmflags),
     ))
 
 AVAILABLE_GCC_VERSIONS = {
-    "12.5.0": {
-        "aarch64": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-12.5.0-aarch64.tar.xz",
-            "sha256": "7b0e25133a98d44b648a925ba11f64a3adc470e87668af80ce2c3af389ebe9be",
-        },
-        "armv7": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-12.5.0-armv7.tar.xz",
-            "sha256": "a0ef76c8cc517b3d76dd2f09b1a371975b2ff1082e2f9372ed79af01b9292934",
-        },
+    "11.4.0": {
         "x86_64": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-12.5.0-x86_64.tar.xz",
-            "sha256": "51076e175839b434bb2dc0006c0096916df585e8c44666d35b0e3ce821d535db",
+            "url": "https://dd-agent-omnibus.s3.amazonaws.com/bazel/datadog_agent_cc_toolchain_ubuntu_22_gcc_11.4.0_x86_64.tar.gz",
+            "sha256": "5d6d23c2ac58b4843b5b5cc2de76d655a4da71656627b1ab7160d8e96996b080",
         },
     },
-    "13.4.0": {
+    "12.3.0": {
         "aarch64": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-13.4.0-aarch64.tar.xz",
-            "sha256": "770cf6bf62bdf78763de526d3a9f5cae4c19f1a3aca0ef8f18b05f1a46d1ffaf",
-        },
-        "armv7": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-13.4.0-armv7.tar.xz",
-            "sha256": "1b2739b5003c5a3f0ab7c4cc7fb95cc99c0e933982512de7255c2bd9ced757ad",
-        },
-        "x86_64": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-13.4.0-x86_64.tar.xz",
-            "sha256": "d96071c1b98499afd7b7b56ebd69ad414020edf66e982004acffe7df8aaf7e02",
-        },
-    },
-    "14.3.0": {
-        "aarch64": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-14.3.0-aarch64.tar.xz",
-            "sha256": "74b1f0072769f8865b62897ab962f6fce174115dab2e6596765bb4e700ffe0d1",
-        },
-        "armv7": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-14.3.0-armv7.tar.xz",
-            "sha256": "0c20a130f424ce83dd4eb2a4ec8fbcd0c0ddc5f42f0b4660bcd0108cb8c0fb21",
-        },
-        "x86_64": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-14.3.0-x86_64.tar.xz",
-            "sha256": "0b365e5da451f5c7adc594f967885d7181ff6d187d6089a4bcf36f954bf3ccf9",
-        },
-    },
-    "15.2.0": {
-        "aarch64": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-15.2.0-aarch64.tar.xz",
-            "sha256": "e1ae45038d350b297bea4ac10f095a98e2218971a8a37b8ab95f3faad2ec69f8",
-        },
-        "armv7": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-15.2.0-armv7.tar.xz",
-            "sha256": "fda64b3ee1c3d7ddcb28378a1b131eadc5d3e3ff1cfab2aab71da7a3f899b601",
-        },
-        "x86_64": {
-            "url": "https://github.com/f0rmiga/gcc-builds/releases/download/18082025/gcc-toolchain-15.2.0-x86_64.tar.xz",
-            "sha256": "50dd28021365e7443853d5e77bc94ab1d1c947ad48fd91cbec44dbdfa61412c9",
+            "url": "https://dd-agent-omnibus.s3.amazonaws.com/bazel/datadog_agent_cc_toolchain_ubuntu_22_gcc_12.3.0_aarch64.tar.gz",
+            "sha256": "a599fdb7c5985db5bed1bfa06a6fa5aef73f0dba81c6ce12328d176738ec0d09",
         },
     },
 }
@@ -306,10 +232,6 @@ _FEATURE_ATTRS = {
     ),
     "extra_cxxflags": attr.string_list(
         doc = "Extra flags for compiling C++.",
-        default = [],
-    ),
-    "extra_fflags": attr.string_list(
-        doc = "Extra flags for compiling Fortran.",
         default = [],
     ),
     "extra_ldflags": attr.string_list(
@@ -381,7 +303,7 @@ gcc_toolchain = repository_rule(
 
 ATTRS_SHARED_WITH_MODULE_EXTENSION = {
     attr_name: _FEATURE_ATTRS[attr_name]
-    for attr_name in ["gcc_version", "gcc_versions", "extra_cflags", "extra_cxxflags", "extra_ldflags", "extra_fflags", "extra_asmflags"]
+    for attr_name in ["gcc_version", "gcc_versions", "extra_cflags", "extra_cxxflags", "extra_ldflags", "binary_prefix", "extra_asmflags"]
 }
 
 def _render_tool_paths(rctx, path_prefix, binary_prefix):
@@ -407,10 +329,6 @@ def _render_tool_paths(rctx, path_prefix, binary_prefix):
             binary_prefix = binary_prefix,
         ),
         "gcov": "{path_prefix}/bin/{binary_prefix}gcov".format(
-            path_prefix = path_prefix,
-            binary_prefix = binary_prefix,
-        ),
-        "gfortran": "{path_prefix}/bin/{binary_prefix}gfortran".format(
             path_prefix = path_prefix,
             binary_prefix = binary_prefix,
         ),
@@ -493,7 +411,6 @@ def gcc_declare_toolchain(
         binary_prefix = binary_prefix,
         extra_cflags = kwargs.pop("extra_cflags", []),
         extra_cxxflags = kwargs.pop("extra_cxxflags", []),
-        extra_fflags = kwargs.pop("extra_fflags", []),
         extra_ldflags = kwargs.pop("extra_ldflags", []),
         extra_asmflags = kwargs.pop("extra_asmflags", []),
         includes = kwargs.pop("includes", []),
@@ -526,32 +443,15 @@ ARCHS = struct(
 _TOOLCHAIN_BUILD_FILE_CONTENT = """\
 load("@rules_cc//cc:defs.bzl", "cc_toolchain")
 load("@{gcc_toolchain_workspace_name}//toolchain:cc_toolchain_config.bzl", "cc_toolchain_config")
-load("@{gcc_toolchain_workspace_name}//toolchain/fortran:defs.bzl", "fortran_toolchain")
 load("//:tool_paths.bzl", "tool_paths")
 
 package(default_visibility = ["//visibility:public"])
 
 toolchain(
-    name = "fortran_toolchain",
-    exec_compatible_with = [
-        "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
-    ],
-    target_compatible_with = {target_compatible_with},
-    toolchain = ":_fortran_toolchain",
-    toolchain_type = "@{gcc_toolchain_workspace_name}//toolchain/fortran:toolchain_type",
-)
-
-fortran_toolchain(
-    name = "_fortran_toolchain",
-    cc_toolchain = ":_cc_toolchain",
-)
-
-toolchain(
     name = "cc_toolchain",
     exec_compatible_with = [
         "@platforms//os:linux",
-        "@platforms//cpu:x86_64",
+        "@platforms//cpu:{target_arch}",
     ],
     target_compatible_with = {target_compatible_with},
     target_settings = {target_settings},
@@ -580,7 +480,6 @@ cc_toolchain_config(
     cxx_builtin_include_directories = {cxx_builtin_include_directories},
     extra_cflags = {extra_cflags},
     extra_cxxflags = {extra_cxxflags},
-    extra_fflags = {extra_fflags},
     extra_ldflags = {extra_ldflags},
     extra_asmflags = {extra_asmflags},
     tool_paths = tool_paths,
@@ -627,6 +526,7 @@ filegroup(
         ":ld",
         ":ld.bfd",
         "xbin/ld",
+        "bin/{binary_prefix}ld",
     ],
     visibility = ["//visibility:public"],
 )
@@ -638,16 +538,14 @@ filegroup(
         "lib/gcc/{include_prefix}*/include/**",
         "lib/gcc/{include_prefix}*/include-fixed/**",
         "{include_prefix}include/**",
-        "sysroot/usr/include/**",
+        "{include_prefix}sysroot/usr/include/**",
+        "{include_prefix}sysroot/usr/include/linux/**",
 
         # C++ includes
         "{include_prefix}include/c++/*/**",
         "include/c++/*/**",
         "{include_prefix}include/c++/*/backward/**",
         "include/c++/*/backward/**",
-
-        # Fortran includes
-        "lib/gcc/{include_prefix}*/finclude/**",
     ], allow_empty=True),
     visibility = ["//visibility:public"],
 )
@@ -675,11 +573,9 @@ filegroup(
         "bin/{binary_prefix}cpp",
         "bin/{binary_prefix}g++",
         "bin/{binary_prefix}gcc",
-        "bin/{binary_prefix}gfortran",
         "xbin/cpp",
         "xbin/g++",
         "xbin/gcc",
-        "xbin/gfortran",
     ] + glob([
         "**/libexec/gcc/**/cc1plus",
         "**/libexec/gcc/**/cc1",
@@ -688,9 +584,6 @@ filegroup(
         "lib/libgmp.so*",
         "lib/libmpc.so*",
         "lib/libmpfr.so*",
-        # Fortran spec files.
-        "**/lib*/libgfortran.spec",
-        "**/lib*/libgomp.spec",
     ], allow_empty=True),
     visibility = ["//visibility:public"],
 )
@@ -702,6 +595,7 @@ filegroup(
     srcs = [
         ":ar",
         "xbin/ar",
+        "bin/{binary_prefix}ar",
     ],
     visibility = ["//visibility:public"],
 )
@@ -711,6 +605,7 @@ filegroup(
     srcs = [
         ":as",
         "xbin/as",
+        "bin/{binary_prefix}as",
     ],
     visibility = ["//visibility:public"],
 )
@@ -726,6 +621,7 @@ filegroup(
     srcs = [
         ":objcopy",
         "xbin/objcopy",
+        "bin/{binary_prefix}objcopy",
     ],
     visibility = ["//visibility:public"],
 )
@@ -735,6 +631,7 @@ filegroup(
     srcs = [
         ":strip",
         "xbin/strip",
+        "bin/{binary_prefix}strip",
     ],
     visibility = ["//visibility:public"],
 )
@@ -744,6 +641,7 @@ filegroup(
     srcs = [
         ":gcov",
         "xbin/gcov",
+        "bin/{binary_prefix}gcov",
     ],
     visibility = ["//visibility:public"],
 )

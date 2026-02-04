@@ -15,10 +15,10 @@ def _gcc_register_toolchain_module_extension(mctx):
                 target_arch = declare.target_arch,
                 gcc_version = declare.gcc_version,
                 gcc_versions = declare.gcc_versions,
+                binary_prefix = declare.binary_prefix,
                 extra_cflags = declare.extra_cflags,
                 extra_cxxflags = declare.extra_cxxflags,
                 extra_ldflags = declare.extra_ldflags,
-                extra_fflags = declare.extra_fflags,
             )
 
     # Since we know that for each gcc toolchain repository we'll generate the same files, we mark the rule as reproducible.
