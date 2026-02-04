@@ -161,7 +161,9 @@ def _gcc_toolchain_impl(rctx):
     ]
     extra_ldflags.extend(rctx.attr.extra_ldflags)
 
-    extra_asmflags = []
+    extra_asmflags = [
+        "-nostdinc",
+    ]
     extra_asmflags.extend([
         "-isystem{}".format(include)
         for include in c_builtin_includes
